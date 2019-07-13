@@ -9,7 +9,7 @@ import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaPairReceiverInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
-import org.apache.spark.streaming.kafka.KafkaUtils;
+import org.apache.spark.streaming.kafka010.KafkaUtils;
 
 import scala.Tuple2;
 
@@ -29,7 +29,7 @@ public class KafkaReceiverWordCount {
         // 使用KafkaUtils.createStream()方法，创建针对Kafka的输入数据流
         Map<String, Integer> topicThreadMap = new HashMap<String, Integer>();
         topicThreadMap.put("helloworld", 1);
-
+/*
         JavaPairReceiverInputDStream<String, String> lines = KafkaUtils.createStream(
                 jssc,
                 //"172.20.10.117:2181,172.20.10.118:2181,172.20.10.119:2181",
@@ -38,7 +38,7 @@ public class KafkaReceiverWordCount {
                 topicThreadMap);
 
         lines.print();
-
+*/
         /*
         JavaDStream<String> words = lines.flatMap(
                 new FlatMapFunction<Tuple2<String, String>, String>() {
