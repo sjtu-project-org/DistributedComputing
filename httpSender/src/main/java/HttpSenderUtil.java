@@ -128,7 +128,7 @@ public class HttpSenderUtil {
     private static String url = "http://202.120.40.8:30361";
 
     public static void main(String[] strs){
-        String filename = "C:\\Users\\loluz\\Desktop\\DS\\lab5\\src\\main\\java\\order.json";
+        String filename = "E:\\junior big\\分布式系统\\lab_DistributedTransactionSettlementSystem\\order.json";
         String contents = "";
         try {
             contents = new String(Files.readAllBytes(new File(filename).toPath()));

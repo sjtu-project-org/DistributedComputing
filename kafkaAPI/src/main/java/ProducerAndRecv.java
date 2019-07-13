@@ -25,14 +25,17 @@ public class ProducerAndRecv implements HttpHandler{
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(arg0.getRequestBody()));
 
         String msg = bufferedReader.readLine();
-        SendMsg(msg);
+        System.out.println(msg);
+        SendMsg2Kafka(msg);
+
+        /* TODO: add a order id generator */
 
         String resp = "your request message i get it!";
         arg0.sendResponseHeaders(200, resp.getBytes().length);
         OutputStream out = arg0.getResponseBody();
         out.write(resp.getBytes());
-
         out.flush();
+
         arg0.close();
     }
 
@@ -50,7 +53,7 @@ public class ProducerAndRecv implements HttpHandler{
         this.properties = prop;
     }
 
-    public void SendMsg(String msg){
+    public void SendMsg2Kafka(String msg){
         //create a new producer
         producer = new KafkaProducer<String, String>(this.properties);
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, msg);
