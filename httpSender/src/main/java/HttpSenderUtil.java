@@ -7,6 +7,11 @@ import java.net.URLConnection;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSON;
+import java.nio.file.Files;
+import java.util.List;
+import java.io.File;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -123,14 +128,31 @@ public class HttpSenderUtil {
     private static String url = "http://202.120.40.8:30361";
 
     public static void main(String[] strs){
+        String filename = "C:\\Users\\loluz\\Desktop\\DS\\lab5\\src\\main\\java\\order.json";
+        String contents = "";
+        try {
+            contents = new String(Files.readAllBytes(new File(filename).toPath()));
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        //Order order = new JSONObject().parseObject(contents,Order.class);
+        List<Order> orderList = JSONArray.parseArray(contents.toString(),Order.class);
+        for (Order od : orderList) {
+            String msg = JSON.toJSONString(od);
+            String param = "msg="+msg;
+            String res = HttpSenderUtil.sendPost(url, param);
+            System.out.println(res);
+            //System.out.println(od.items);
+        }
         long time=new Date().getTime();
         //String check=MD5.getMD5(time+"www.j1.com");
-        String mobile="13053702096";
+       /* String mobile="13053702096";
         String msg="尊敬的用户  ， 您在健一网的安全验证码为897489，健一网祝您身体健康";
         String param="t="+time+"&mobile="+mobile+"&msg="+msg;
         //String res=HttpSenderUtil.sendPost("http://localhost:8080/ec-dec/page/sms/sendSms/code",param);
         String res = HttpSenderUtil.sendPost(url, param);
-        System.out.println(res);
+        System.out.println(res);*/
     }
     /**
      * 执行get方法
