@@ -4,33 +4,23 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>testSpark</groupId>
-    <artifactId>sparkConsumer</artifactId>
+    <groupId>testZK</groupId>
+    <artifactId>myDemo</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core -->
+        <!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
-            <version>2.4.3</version>
-            <scope>provided</scope>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version>3.4.14</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-streaming -->
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.12</artifactId>
-            <version>2.4.3</version>
-            <scope>provided</scope>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-10 -->
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming-kafka-0-10_2.11</artifactId>
-            <version>2.4.3</version>
-        </dependency>
-
-
     </dependencies>
 
     <build>
@@ -45,10 +35,11 @@
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.5.5</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>JavaDirectDemo</mainClass>
+                            <mainClass>myLockDemo</mainClass>
                         </manifest>
                     </archive>
                     <!--不追加jar-with-dependencies -->
@@ -60,6 +51,5 @@
             </plugin>
         </plugins>
     </build>
-
 
 </project>

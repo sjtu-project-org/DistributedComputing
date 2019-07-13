@@ -15,6 +15,8 @@ public class ProducerAndRecv implements HttpHandler{
     private Properties properties;
     Producer<String, String> producer = null;
 
+    private static final String topic = "test1";
+
     @Override
     public void handle(HttpExchange arg0) throws IOException
     {
@@ -51,7 +53,7 @@ public class ProducerAndRecv implements HttpHandler{
     public void SendMsg(String msg){
         //create a new producer
         producer = new KafkaProducer<String, String>(this.properties);
-        ProducerRecord<String, String> record = new ProducerRecord<>("helloworld", msg);
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, msg);
         producer.send(record);
 
         producer.close();
