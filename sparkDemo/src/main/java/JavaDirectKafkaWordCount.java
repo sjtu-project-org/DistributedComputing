@@ -54,12 +54,20 @@ public final class JavaDirectKafkaWordCount {
         HashMap<String, String> kafkaParams = new HashMap<>();
         kafkaParams.put("metadata.broker.list", brokers);
         final String groupId = kafkaParams.get("group.id");
+        //System.out.println(groupId);
+        kafkaParams.put("group.id", "group-1");
+        kafkaParams.put("enable.auto.commit", "true");
+        kafkaParams.put("auto.commit.interval.ms", "1000");
+        kafkaParams.put("auto.offset.reset", "smallest");
+        kafkaParams.put("bootstrap.servers", "10.0.0.52:9092, 10.0.0.34:9092, 10.0.0.101:9092");
+        kafkaParams.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        kafkaParams.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
         // 创建kafka管理对象
         final KafkaCluster kafkaCluster = getKafkaCluster(kafkaParams);
 
         // 初始化offsets
-        Map<TopicAndPartition, Long> fromOffsets = fromOffsets(topicsSet, kafkaParams, groupId, kafkaCluster, null);
+        Map<TopicAndPartition, Long> fromOffsets = fromOffsets(topicsSet, kafkaParams, "group-1", kafkaCluster, null);
 
         // 创建kafkaStream
         JavaInputDStream<String> stream = KafkaUtils.createDirectStream(jssc,
@@ -82,7 +90,12 @@ public final class JavaDirectKafkaWordCount {
 
         // Start the computation
         jssc.start();
-        jssc.awaitTermination();
+        try {
+            jssc.awaitTermination();
+        } catch (InterruptedException e) {
+            // nothing
+        }
+
     }
 
     /**
