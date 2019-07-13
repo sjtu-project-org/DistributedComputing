@@ -2,16 +2,9 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.TaskContext;
-import org.apache.spark.api.java.*;
-import org.apache.spark.api.java.function.*;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.*;
-import org.apache.spark.streaming.kafka010.*;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import scala.Tuple2;
 
 
 public class JavaDirectDemo {
@@ -33,7 +26,7 @@ public class JavaDirectDemo {
         kafkaParams.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaParams.put("group.id", "group-demo2");
         kafkaParams.put("auto.offset.reset", "latest");
-        kafkaParams.put("enable.auto.commit", "false");
+        kafkaParams.put("enable.auto.commit", "true");
 
         Collection<String> topics = Arrays.asList(topic);
 
@@ -50,7 +43,10 @@ public class JavaDirectDemo {
         JavaDStream<String> words = lines.flatMap(x -> Arrays.asList(SPACE.split(x)).iterator());
         JavaPairDStream<String, Integer> wordCounts = words.mapToPair(s -> new Tuple2<>(s, 1))
                 .reduceByKey((i1, i2) -> i1 + i2);
-        wordCounts.print();
+        wordCounts.toJavaDStream().foreachRDD(rdd -> {
+            System.out.println("hhhhhh");
+            System.out.println("rdd: " + rdd.toString());
+        });
 
         System.out.println("fuck kafka");
 
