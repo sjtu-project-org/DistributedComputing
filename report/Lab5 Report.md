@@ -14,6 +14,8 @@ Group 1
 
 1. Host: 4 virtual servers(centos7) with 4 VCPUs and 8GB RAM is set up
 
+   ![Figure 1](https://raw.githubusercontent.com/zztttt/DistributedComputing/master/report/image-20190713144347113.png)
+
 2. Http request sender: （Windows 的系统配置数据 #TODO ）
 
 ####Install and configuration process
@@ -145,7 +147,7 @@ Group 1
 
       curl https://192.168.2.36:8080 结合HTML预览工具可以查看状态：
 
-      ![image-20190713192717887](/Users/darlenelee/Documents/sjtu18/SE347/image-20190713192717887.png)
+      ![Figure 2](https://raw.githubusercontent.com/zztttt/DistributedComputing/master/report/image-20190713192717887.png)
 
 4. 
 
