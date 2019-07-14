@@ -8,7 +8,7 @@
 ## Install and configuration process
 1. openstack instance配置与SSH免密登陆：  
     在/.ssh/目录下生成config文件：
-    ```
+    ``` bash
    Host centos-ext
    HostName 202.120.40.8
    User centos
@@ -44,7 +44,7 @@
     tar -xvf zookeeper-3.4.14.tar.gz
     ```
     修改zookeeper.properties
-    ```
+    ``` bash
     dataDir=/home/centos/kafka/zookeeper
     tickTime=2000
     initLimit=5
@@ -54,7 +54,7 @@
     server.3=10.0.0.101:2888:3888
     ```
     通过startZKCluster.sh启动zookeeper
-    ```
+    ``` bash
     #! /bin/sh
     echo "start zookeeper ....."
     /home/centos/zookeeper-3.4.14/bin/zkServer.sh start
@@ -75,7 +75,7 @@
     echo "zookeeper start ok"
     ```
     通过stopZKCluster.sh关闭zookeeper
-    ```
+    ``` bash
     #! /bin/sh
     echo "stop zookeeper ..."
     /home/centos/zookeeper-3.4.14/bin/zkServer.sh stop
@@ -87,21 +87,21 @@
     ```
 5.  部署Kafka  
     对每个服务器从官网下载压缩包：**kafka_2.11-2.3.0.tgz**
-    ```
+    ``` bash
     tar -xvf kafka_2.11-2.3.0.tgz
     mv kafka_2.11-2.3.0 kafka
     cd kafka
     vim config/server.properties
     ```
     修改以下config：
-    ```
+    ``` bash
     brokers.id=1 #每个server不一样，server-N该值修改为N
     zookeeper.connect=10.0.0.52:2181,10.0.0.34:2181,10.0.0.101:2181
     listeners=PLAINTEXT://10.0.0.52:9092
     delete.topic.enable=true
     log.dirs=/home/centos/kafka/kafka-logs
     ```
-    ```
+    ``` bash
     cd ~
     tar -cvf kafka.tar.gz kafka
     scp kafka.tar.gz server-2:/home/centos/
@@ -114,7 +114,7 @@
     chmod 777 start.sh
     ```
     通过start.sh脚本来启动kafka集群
-    ```
+    ``` bash
     #! /bin/bash
     echo "start server-1 kafka"
     nohup bin/kafka-server-start.sh config/server.properties > ka.log &
@@ -147,7 +147,7 @@
     TODO
     ```
     通过stop.sh脚本,销毁kafka集群
-    ```
+    ``` bash
     #! /bin/bash
     echo "stop... beign from local kafka"
     bin/kafka-server-stop.sh
@@ -172,34 +172,42 @@
     done
     echo "remove logs done"
     ```
-6.  部署spark  
-    在server-1 spark-2.4.3-bin-hadoop2.7/sbin中启动Spark的脚本
+6.  部署 Spark
+    从官网下载 Spark 压缩包到服务器并解压
+    配置 server-1 spark-2.4.3-bin-hadoop2.7/conf 目录下的 spark-env.sh
+    ``` bash
+    SPARK_LOCAL_IP=server-1
+    SPARK_LOCAL_DIRS=/home/centos/spark-2.4.3-bin-hadoop2.7/tmp
+    export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.212.b04-0.el7_6.x86_64
 
+    export SPARK_MASTER_IP=server-1
+    export SPARK_MASTER_PORT=7077
+    export SPARK_MASTER_HOST=server-1
     ```
-    if [ -z "${SPARK_HOME}" ]; then
-    export SPARK_HOME="$(cd "`dirname "$0"`"/..; pwd)"
-    fi
-    
-    # Load the Spark configuration
-    . "${SPARK_HOME}/sbin/spark-config.sh"
-    
-    # Start Master
-    "${SPARK_HOME}/sbin"/start-master.sh
-    
-    # Start Workers
-    "${SPARK_HOME}/sbin"/start-slaves.sh
-    ```
+    然后使用 scp 命令传输整个 spark 目录到 server-2 和 server-3，注意修改其中 **SPARK_LOCAL_IP** 的值对应服务器IP
 
-    curl https://192.168.2.36:8080 结合HTML预览工具可以查看状态：
+    在server-1 spark-2.4.3-bin-hadoop2.7/sbin中执行启动Spark的脚本
+    ```
+    sh sbin/start-all.sh
+    ```
+    即可启动 三个 server（1-3） 的 master-salves spark 集群
+    执行
+    ```
+    curl https://192.168.2.36:8080 
+    ```
+    结合HTML预览工具可以查看状态：
 
     ![Figure 2](https://raw.githubusercontent.com/zztttt/DistributedComputing/master/report/image-20190713192717887.png)
 
 
-
 ## Program design
+0.  系统运行流程为：从 Windows 主机使用 HttpSender 向 Cloud Server 映射到外网的端口 30361 发送订单信息。在 server 中存在一个 Http Recevier 监听该端口，获取到 Order 信息并使用 Kafka Producer 向 Kafka 相应 topic 生产消息。Spark 中运行的 Spark Streaming 任务使用 Kafka API 使用 Direct 方式消费消息，完成订单的处理逻辑并持久化到数据库，同时处理 Zookeeper 管理的总交易额数据。
+
+    另外，在 Recevier 接受到消息时利用 Zookeeper 生成一个唯一的 orderID 作为返回值响应请求，用户后续可以使用该 orderID 查询订单完成情况。同时还有四个线程每隔一定时间修改 Zookeeper 管理的汇率数据。
+
 1.  启动HttpSender
-    通过window主机向server发送消息，在这里为订单
-    ```
+    通过 window 主机向 server 发送订单消息
+    ``` Java
     public class HttpSenderUtil {
 
     /**
@@ -260,50 +268,10 @@
         return result;
     }
 
-    public static  String httpSend(String url, Map<String, Object> propsMap)  throws Exception{
-        HttpClient httpClient = new HttpClient();
-        PostMethod postMethod = new PostMethod(url);// POST请求
-        String returnString ="";
-        // 参数设置
-        Set<String> keySet = propsMap.keySet();
-        NameValuePair[] postData = new NameValuePair[keySet.size()];
-        int index = 0;
-        for (String key : keySet) {
-            postData[index++] = new NameValuePair(key, propsMap.get(key).toString());
-        }
-        postMethod.addParameters(postData);
-        try {
-            httpClient.executeMethod(postMethod);// 发送请求
-            java.io.InputStream input = postMethod.getResponseBodyAsStream();
-            returnString = convertStreamToString(input).toString();
-
-        } catch (HttpException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            postMethod.releaseConnection();// 关闭连接
-        }
-        return returnString;
-    }
-
-    public static String convertStreamToString(java.io.InputStream input)
-            throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input,
-                "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line + "\n");
-        }
-        input.close();
-        return sb.toString();
-    }
-
     private static String url = "http://202.120.40.8:30361";
 
     public static void main(String[] strs){
-        String filename = "C:\\Users\\loluz\\Desktop\\DS\\lab5\\src\\main\\java\\order.json";
+        String filename = "Test File Path";
         String contents = "";
         try {
             contents = new String(Files.readAllBytes(new File(filename).toPath()));
@@ -315,50 +283,35 @@
         List<Order> orderList = JSONArray.parseArray(contents.toString(),Order.class);
         for (Order od : orderList) {
             String msg = JSON.toJSONString(od);
-            String param = "msg="+msg;
+            String param = msg;
             String res = HttpSenderUtil.sendPost(url, param);
             System.out.println(res);
             //System.out.println(od.items);
         }
         long time=new Date().getTime();
-        //String check=MD5.getMD5(time+"www.j1.com");
-       /* String mobile="13053702096";
-        String msg="尊敬的用户  ， 您在健一网的安全验证码为897489，健一网祝您身体健康";
-        String param="t="+time+"&mobile="+mobile+"&msg="+msg;
-        //String res=HttpSenderUtil.sendPost("http://localhost:8080/ec-dec/page/sms/sendSms/code",param);
-        String res = HttpSenderUtil.sendPost(url, param);
-        System.out.println(res);*/
-    }
-    /**
-     * 执行get方法
-     * @param url
-     * @param queryString
-     * @return
-     */
-    public static String doGet(String url, String queryString) {
-        String response = null;
-        HttpClient client = new HttpClient();
-        HttpMethod method = new GetMethod(url);
-        try {
-            if (StringUtils.isNotBlank(queryString))
-                method.setQueryString(URIUtil.encodeQuery(queryString));
-            client.executeMethod(method);
-            if (method.getStatusCode() == HttpStatus.SC_OK) {
-                response = method.getResponseBodyAsString();
-            }
-        } catch (URIException e) {
-            //logger.error("执行HTTP Get请求时，编码查询字符串“" + queryString + "”发生异常！", e); 
-        } catch (IOException e) {
-            //logger.error("执行HTTP Get请求" + url + "时，发生异常！", e); 
-        } finally {
-            method.releaseConnection();
-        }
-        return response;
     }
     ```
 
-2.  启动HttpReceiver，并使用Kafka的producer将接收到的数据发给指定topic  
+2.  启动HttpReceiver，并使用 Kafka 的 producer 将接收到的数据发给指定 topic，注意其中向 Zookeeper 请求了一个全局唯一的 OrderID
+    HttpReceiver.java:
+    ``` Java
+    public class HttpReceiver
+    {
+        public static void main(String[] args) throws Exception
+        {
+            HttpServerProvider provider = HttpServerProvider.provider();
+            HttpServer server = provider.createHttpServer(new InetSocketAddress(30361), 10);
+
+            ProducerAndRecv prodRecv = new ProducerAndRecv();
+            server.createContext("/", prodRecv);
+
+            server.setExecutor(null);
+            server.start();
+        }
+    }
     ```
+    ProducerAndRecv.java
+    ``` Java
     public class ProducerAndRecv implements HttpHandler{
         private Properties properties;
         Producer<String, String> producer = null;
@@ -373,9 +326,25 @@
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(arg0.getRequestBody()));
 
             String msg = bufferedReader.readLine();
-            SendMsg(msg);
 
-            String resp = "your request message i get it!";
+            /* TODO: add a order id generator */
+            String orderPath = null;
+            try {
+                orderPath = zkClient.create(ORDER_PATH,
+                        Thread.currentThread().getName().getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                        CreateMode.EPHEMERAL_SEQUENTIAL);
+                System.out.println(orderPath);
+
+            } catch (KeeperException | InterruptedException e) {
+                System.out.println("HTTP handler orderID wrong");
+            }
+
+            String orderId = orderPath.substring(ORDER_PATH.length());
+
+            String Msg2Kafka = String.format("{order_id:%s,order:%s}", orderId, msg);
+            SendMsg2Kafka(Msg2Kafka);
+
+            String resp = "your request message already received," + "orderID : "+ orderId;
             arg0.sendResponseHeaders(200, resp.getBytes().length);
             OutputStream out = arg0.getResponseBody();
             out.write(resp.getBytes());
@@ -409,46 +378,23 @@
     }
 
     ```
-    HttpReceiver.java:
-    ```
-    public class HttpReceiver
-    {
-        public static void main(String[] args) throws Exception
-        {
-            HttpServerProvider provider = HttpServerProvider.provider();
-            HttpServer server = provider.createHttpServer(new InetSocketAddress(30361), 10);
-
-            ProducerAndRecv prodRecv = new ProducerAndRecv();
-            server.createContext("/", prodRecv);
-
-            server.setExecutor(null);
-            server.start();
-        }
-    }
-    ```
+   
 3.  利用spark-Kafka的direct方式，周期性地查询Kafka，来获得每个topic+partition的最新的offset，处理数据的job启动时，就会使用Kafka的简单consumer api来获取Kafka指定offset范围的数据  
     在这里利用spark-streaming读取kafka内相应topic的消息  
-    ```
+    ``` Java
     public class JavaDirectDemo {
 
         private static final Pattern SPACE = Pattern.compile(" ");
 
         private static final String topic = "test1";
 
+        ... 
+        // Spark Zookeepr Mysql lockServer 的连接器
+
         public static void main(String[] args) throws Exception{
+            // 初始化 Spark Zookeepr Mysql 等连接
+            ...
 
-            SparkConf conf = new SparkConf()
-                    .setMaster("spark://server-1:7077")
-                    .setAppName("JavaDirectDemo");
-            JavaStreamingContext sparkContext = new JavaStreamingContext(conf, Durations.seconds(5));
-
-            Map<String, Object> kafkaParams = new HashMap<>();
-            kafkaParams.put("bootstrap.servers", "10.0.0.52:9092, 10.0.0.34:9092, 10.0.0.101:9092");
-            kafkaParams.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-            kafkaParams.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-            kafkaParams.put("group.id", "group-demo2");
-            kafkaParams.put("auto.offset.reset", "latest");
-            kafkaParams.put("enable.auto.commit", "true");
 
             Collection<String> topics = Arrays.asList(topic);
 
@@ -459,26 +405,189 @@
                             ConsumerStrategies.<String, String>Subscribe(topics, kafkaParams)
                     );
 
+            // Order 处理逻辑
+            JavaDStream<OrderWithID> orderDStream = stream.map(
+                new Function<ConsumerRecord<String, String>, OrderWithID>() {
+                    @Override
+                    public OrderWithID call(ConsumerRecord<String, String> cr) throws Exception {
+                        System.out.println(cr.key());
+                        System.out.println(cr.value());
+                        return JSONObject.parseObject(cr.value(), OrderWithID.class);
+                    }
+                }).cache();
+            // 处理每个 RDD 中的 order
+            orderDStream.foreachRDD(
+                new VoidFunction<JavaRDD<OrderWithID>> () {
+                    @Override
+                    public void call(JavaRDD<OrderWithID> rdd) throws Exception {
+                        List<OrderWithID> orders = rdd.collect();
+                        for (OrderWithID o : orders) {
+                            System.out.println(o.getOrder_id());
+                            handleOrder(o);
+                        }
+                    }
+                }
+            );
 
-            // Get the lines, split them into words, count the words and print
-            JavaDStream<String> lines = stream.map(ConsumerRecord::value);
-            JavaDStream<String> words = lines.flatMap(x -> Arrays.asList(SPACE.split(x)).iterator());
-            JavaPairDStream<String, Integer> wordCounts = words.mapToPair(s -> new Tuple2<>(s, 1))
-                    .reduceByKey((i1, i2) -> i1 + i2);
-            wordCounts.toJavaDStream().foreachRDD(rdd -> {
-                System.out.println("hhhhhh");
-                System.out.println("rdd: " + rdd.toString());
-            });
-
-            System.out.println("fuck kafka");
             sparkContext.start();
             sparkContext.awaitTermination();
+            }
+        }
+
+        private static void handleOrder(OrderWithID o) throws Exception {
+            // 获取锁
+
+            // 从Mysql读取数据
+
+            // 按订单处理逻辑处理
+
+            // 持久化结果表，更新商品库存到 Mysql
+
+            // 释放锁
+        }
+    }
+    ```
+4. 汇率每隔一段时间随机变化
+``` JAVA
+public class mySimple {
+
+    private static ZooKeeper authZK = null;
+    private static final String intraHost = "10.0.0.52:2181";
+
+    private static Double d = 2.0;
+    private static final Double[] currencyBase = new Double[]{2.0, 12.0, 0.15, 9.0};
+    private static String[] currencyType = new String[]{"RMB", "USD", "JPY", "EUR"};
+    private static final int[] currencyLow = new int[]{140, 840, 10, 630};
+    private static final int[] currencyHigh = new int[]{260, 1560, 20, 1170};
+
+    public static void main(String[] args) throws KeeperException, InterruptedException,Exception {
+        System.out.println("in main");
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        authZK = new ZooKeeper(intraHost, 50000, new Watcher() {
+            @Override
+            public void process(WatchedEvent watchedEvent) {
+                System.out.println("ZK connected");
+                try {
+                    for (int i=0; i<4; i++) {
+                        //authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        //如果根节点不存在，则创建该货币节点
+                        Stat stat = authZK.exists("/Currency/"+currencyType[i], false);
+                        if (stat == null) {
+                            authZK.create("/Currency/"+currencyType[i], double2Bytes(currencyBase[i]), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        }
+                        final int index = i;
+                        final long interval = 15000;
+                        new Thread(() -> {
+                            try {
+                                while (true) {
+                                    int low = currencyLow[index];
+                                    int high = currencyHigh[index];
+                                    Random rand = new Random();
+                                    double newValue = (rand.nextInt(high-low+1)+low) / 100.0;
+                                    authZK.setData("/Currency/"+currencyType[index], double2Bytes(newValue), -1);
+                                    byte[] data = authZK.getData("/Currency/"+currencyType[index], false, null);
+                                    System.out.println("Currency type: "+ currencyType[index]+" currency value: "+bytes2Double(data));
+                                    Thread.sleep(interval);
+                                }
+
+                            } catch (Exception e) {
+
+                            }
+                        }).start();
+                    }
+                }
+            }
+        });
+        latch.await();
+
+    }
+```
+5. 分布式锁实现
+``` JAVA
+public class FairLock {
+
+    //ZooKeeper配置信息
+    private ZooKeeper zkClient;
+    private static final String interHost = "10.0.0.52:2181";
+
+    // all lock is child of /Locks;
+    private String LOCK_ROOT_PATH = "/FairLocks";
+
+    private static final String LOCK_NODE_NAME = "Lock_";
+    private String lockPath;
+
+    // 监控lockPath的前一个节点的watcher
+    private Watcher watcher = new Watcher() {
+        @Override
+        public void process(WatchedEvent event) {
+            System.out.println(event.getPath() + " 前锁释放");
+            synchronized (this) {
+                notifyAll();
+            }
+
+        }
+    };
+
+    public FairLock(String LockWhat) throws IOException, InterruptedException, KeeperException{
+        this.LOCK_ROOT_PATH = this.LOCK_ROOT_PATH + "/" + LockWhat;
+
+        // ZKClient 连接初始化
+    }
+
+    //获取锁的原语实现.
+    public  void acquireLock() throws InterruptedException, KeeperException {
+        //创建锁节点
+        createLock();
+        //尝试获取锁
+        attemptLock();
+    }
+
+    private void createLock() throws KeeperException, InterruptedException {
+        // 创建EPHEMERAL_SEQUENTIAL类型节点
+        String lockPath = zkClient.create(LOCK_ROOT_PATH + "/" + LOCK_NODE_NAME,
+                Thread.currentThread().getName().getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                CreateMode.EPHEMERAL_SEQUENTIAL);
+        System.out.println(Thread.currentThread().getName() + " 锁创建: " + lockPath);
+        this.lockPath=lockPath;
+    }
+
+    private void attemptLock() throws KeeperException, InterruptedException {
+        // 获取Lock所有子节点，按照节点序号排序
+        List<String> lockPaths = null;
+        lockPaths = zkClient.getChildren(LOCK_ROOT_PATH, false);
+        Collections.sort(lockPaths);
+        int index = lockPaths.indexOf(lockPath.substring(LOCK_ROOT_PATH.length() + 1)); //TODO: need this.?
+
+        // 如果lockPath是序号最小的节点，则获取锁
+        if (index == 0) {
+            System.out.println(Thread.currentThread().getName() + " 锁获得, lockPath: " + lockPath);
+            return ;
+        } else {
+            // lockPath不是序号最小的节点，监控前一个节点
+            String preLockPath = lockPaths.get(index - 1);
+            Stat stat = zkClient.exists(LOCK_ROOT_PATH + "/" + preLockPath, watcher);
+            // 假如前一个节点不存在了，比如说执行完毕，或者执行节点掉线，重新获取锁
+            if (stat == null) {
+                attemptLock();
+            } else { // 阻塞当前进程，直到preLockPath释放锁，被watcher观察到，notifyAll后，重新acquireLock
+                System.out.println(" 等待前锁释放，prelocakPath："+preLockPath);
+                synchronized (watcher) {
+                    watcher.wait();
+                }
+                attemptLock();
+            }
         }
     }
 
-    ...
-    TODO
-    ```
+    //释放锁的原语实现
+    public void releaseLock() 
+}
+```
+6. 发送获取订单完成情况与获取某货币总交易额的请求
+``` JAVA
+
+```
 
 ##  the problems you encountered
 1.  服务器ping不同域名，但是能ping通具体IP，且在服务器之间能自由ping通  
@@ -507,9 +616,9 @@
 ##  the contribution of each student
 | 姓名 | 学号 | 内容 |
 | ------ | ------ | ------ |
-| 方俊杰 | 516030910006 | cloud环境搭建，zookeeper、spark部署与使用，zookeeper分布式锁|
-| 张政童 | 516030910016 | cloud环境搭建， zookeeper、Kafka部署与使用，文档编写|
-| 刘泽宇 | 516030910108 | cloud环境搭建，数据库创建，order传输逻辑|
+| 方俊杰 | 516030910006 | HTTP服务搭建，zookeeper部署、spark部署与使用，zookeeper分布式锁, Spark SQL 持久化|
+| 张政童 | 516030910016 | HTTP服务搭建， zookeeper部署、Kafka部署与使用，文档编写|
+| 刘泽宇 | 516030910108 | HTTP传输order，数据库创建，JSON模块实现，Zookeeper汇率变化实现|
 | 李翌珺 | 516030910395 | cloud环境搭建，spark部署，文档编写 |
 
 
