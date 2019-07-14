@@ -46,9 +46,9 @@ public class ProducerAndRecv implements HttpHandler{
             System.out.println("HTTP handler orderID wrong");
         }
 
-        String orderId = orderPath.substring(ORDER_PATH.length() + 1);
+        String orderId = orderPath.substring(ORDER_PATH.length());
 
-        String Msg2Kafka = String.format("{order_id : %s, msg : %s}", orderId, msg);
+        String Msg2Kafka = String.format("{order_id:%s,order:%s}", orderId, msg);
         SendMsg2Kafka(Msg2Kafka);
 
         String resp = "your request message already received," + "orderID : "+ orderId;
