@@ -10,6 +10,11 @@
     | server-2 | 10.0.0.34 |
     | server-3 | 10.0.0.101 |
     | server-4 | 10.0.0.37 |
+3. Java 1.8.0_212
+3. Zookeeper 3.4.14
+4. Kafka 2.11-2.3.0
+5. Spark 2.4.3-bin-hadoop2.7
+6. Mysql 5.7
 
 ## Install and configuration process
 1. openstack instance配置与SSH免密登陆：  
