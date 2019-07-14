@@ -599,19 +599,21 @@ public class FairLock {
     ```
     delete.topic.enable=true
     ```
-3.  spark安装运行在webUI界面不显示worker  
+4.  spark安装运行在webUI界面不显示worker  
     在master即server-1的conf/spark-env.sh内增加了对于master的环境变量
     ```
     export SPARK_MASTER_IP=server-1
     export SPARK_MASTER_PORT=7077
     export SPARK_MASTER_HOST=server-1
     ```
-4.  java程序如何打包部署  
+5.  java程序如何打包部署  
     查询资料后，得知在pom.xml里引入build配置，设定好mainClass，在项目目录下mvn assembly:assembly进行打包，在服务器上运行 **java -jar [your jar package]**
-5.  kafka版本logging noMethodFound   
-    就是java dependency的问题，在引入的依赖中把Scala2.12版本换成2.11版本即可
-6.  Kafka的receive模式在spark2.x版本后不再进行支持  
+6.  kafka： logging noMethodFound   
+    就是java dependency版本的问题，在引入的依赖中把Scala2.12版本换成2.11版本即可
+7.  Kafka的receive模式在spark2.x版本后不再进行支持  
     因为我们spark版本使用的是2.4.3，所以将消费方式改成direct就得以解决
+8.  写java类的时候，把一些成员变量误设为static类型，导致成员变量管理混乱  
+    去掉static即可
 
 ##  the contribution of each student
 | 姓名 | 学号 | 内容 |
