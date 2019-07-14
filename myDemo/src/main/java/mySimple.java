@@ -1,7 +1,9 @@
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
@@ -26,6 +28,9 @@ public class mySimple {
     private static final String path = "/service";
 
     private static Double d = 2.0;
+    private static String[] currencyType = new String[]{"RMB", "USD", "JPY", "EUR"};
+    private static final int[] currencyLow = new int[]{140, 840, 10, 630};
+    private static final int[] currencyHigh = new int[]{260, 1560, 20, 1170};
 
     public static byte[] double2Bytes(double d) {
         long value = Double.doubleToRawLongBits(d);
@@ -45,9 +50,11 @@ public class mySimple {
     }
 
     public static void testCreateNode() throws KeeperException, InterruptedException{
-        String newNodeString = authZK.create("/Currency/RMB", double2Bytes(d),Ids.OPEN_ACL_UNSAFE,CreateMode.EPHEMERAL);
-        byte[] data = authZK.getData("/RMB", false, null);
-        System.out.println(bytes2Double(data));
+        for (int i = 0; i< 4; i++) {
+            String newNodeString = authZK.create("/Currency/RMB", double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+            byte[] data = authZK.getData("/RMB", false, null);
+            System.out.println(bytes2Double(data));
+        }
     }
 
     public static void setNodeData() throws KeeperException, InterruptedException{
@@ -67,8 +74,30 @@ public class mySimple {
             public void process(WatchedEvent watchedEvent) {
                 System.out.println("ZK connected");
                 try {
-                    testCreateNode();
-                    setNodeData();
+                    for (int i=0; i<4; i++) {
+                        authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        final int index = i;
+                        final long interval = 15000;
+                        new Thread(() -> {
+                            try {
+                                while (true) {
+                                    int low = currencyLow[index];
+                                    int high = currencyHigh[index];
+                                    Random rand = new Random();
+                                    double newValue = (rand.nextInt(high-low+1)+low) / 100.0;
+                                    authZK.setData("/Currency/"+currencyType[index], double2Bytes(newValue), -1);
+                                    byte[] data = authZK.getData("/Currency/"+currencyType[index], false, null);
+                                    System.out.println("Currency type: "+ currencyType[index]+" currency value: "+bytes2Double(data));
+                                    Thread.sleep(interval);
+                                }
+
+                            } catch (Exception e) {
+
+                            }
+                        }).start();
+                    }
+                    //testCreateNode();
+                    //setNodeData();
                 }
                 catch (KeeperException e) {
                     e.printStackTrace();
@@ -82,5 +111,27 @@ public class mySimple {
         });
         latch.await();
 
+    }
+
+    public static void test(String[] args) {
+        for (int i=0; i<4; i++) {
+            final int index = i;
+            final long interval = 15000;
+            new Thread(() -> {
+                try {
+                    while (true) {
+                        int low = currencyLow[index];
+                        int high = currencyHigh[index];
+                        Random rand = new Random();
+                        double newValue = (rand.nextInt(high-low+1)+low) / 100.0;
+                        System.out.println("thread number: "+index+" The value is"+newValue);
+                        Thread.sleep(interval);
+                    }
+
+                } catch (Exception e) {
+
+                }
+            }).start();
+        }
     }
 }
