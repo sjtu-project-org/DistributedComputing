@@ -458,6 +458,13 @@
 6.  Kafka的receive模式在spark2.x版本后不再进行支持  
     因为我们spark版本使用的是2.4.3，所以将消费方式改成direct就得以解决
 
+##  the contribution of each student
+| 姓名 | 学号 | 内容 |
+| ------ | ------ | ------ |
+| 方俊杰 | 516030910006 | cloud环境搭建，zookeeper、spark部署与使用，zookeeper分布式锁|
+| 张政童 | 516030910016 | cloud环境搭建， zookeeper、Kafka部署与使用，文档编写|
+| 刘泽宇 | 516030910108 | cloud环境搭建，数据库创建，order传输逻辑|
+| 李翌珺 | 516030910395 | cloud环境搭建，spark部署，文档编写 |
 
 
 
