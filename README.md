@@ -589,6 +589,30 @@ public class FairLock {
 
 ```
 
+##  Process Show
+0.  启动 Zookeerpr、Kafka、Spark、Mysql 服务
+
+1.  在多服务器启动 HTTP Receiver 监听
+``` bash
+java -jar HttpRecv-1.0-SNAPSHOT.jar
+```
+2. 向 Spark 集群提交任务
+``` bash
+./bin/spark-submit --master spark://server-1:7077 --class JavaDirectDemo /home/centos/integration/sparkConsumer-1.0-SNAPSHOT.jar
+```
+3. 启动 汇率变化查询
+``` bash
+java -jar ExchangeRate-1.0-SNAPSHOT.jar
+```
+4. 启动 Windows HTTP Sender 得到订单 ID 返回
+![返回订单ID](report/orderResp.png)
+
+5. 查看 Mysql 发现结果集增加，商品库存减少
+![结果集增加](report/dbresult.png)
+![商品库存减少](report/dbcomm.png)
+
+6. 使用其他 HTTP 可以请求查询某订单完成情况及总交易额
+
 ##  the problems you encountered
 1.  服务器ping不同域名，但是能ping通具体IP，且在服务器之间能自由ping通  
     怀疑是DNS出现问题，但是修改了不同的DNS服务器后依然没有解决，后来发现是安全组的问题，新增了一些方法得以解决
@@ -618,10 +642,10 @@ public class FairLock {
 ##  the contribution of each student
 | 姓名 | 学号 | 内容 |
 | ------ | ------ | ------ |
-| 方俊杰 | 516030910006 | HTTP服务搭建，zookeeper部署、spark部署与使用，zookeeper分布式锁, Spark SQL 持久化|
-| 张政童 | 516030910016 | HTTP服务搭建， zookeeper部署、Kafka部署与使用，文档编写|
-| 刘泽宇 | 516030910108 | HTTP传输order，数据库创建，JSON模块实现，Zookeeper汇率变化实现|
-| 李翌珺 | 516030910395 | cloud环境搭建，spark部署，文档编写 |
+| 方俊杰 | 516030910006 | HTTP服务搭建、zookeeper部署、spark部署与使用、zookeeper分布式锁,、Spark SQL 持久化|
+| 张政童 | 516030910016 | HTTP服务搭建、zookeeper部署、Kafka部署与使用、文档编写|
+| 刘泽宇 | 516030910108 | HTTP传输order、数据库创建、JSON模块实现、Zookeeper汇率变化实现|
+| 李翌珺 | 516030910395 | cloud环境搭建，spark部署、文档编写 |
 
 
 
