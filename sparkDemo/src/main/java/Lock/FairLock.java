@@ -34,7 +34,7 @@ public class FairLock {
     public FairLock(String LockWhat) throws IOException, InterruptedException, KeeperException{
         this.LOCK_ROOT_PATH = this.LOCK_ROOT_PATH + "/" + LockWhat;
 
-        zkClient= new ZooKeeper(interHost, 10000, new Watcher() {
+        zkClient= new ZooKeeper(interHost, 500000, new Watcher() {
             @Override
             public void process(WatchedEvent event) {
                 if(event.getState()== Event.KeeperState.Disconnected){
@@ -111,7 +111,7 @@ public class FairLock {
     //释放锁的原语实现
     public void releaseLock() throws KeeperException, InterruptedException {
         zkClient.delete(lockPath, -1);
-        zkClient.close();
+        //zkClient.close();
         System.out.println(" 锁释放：" + lockPath);
     }
 }

@@ -31,9 +31,54 @@ public class SparkMysql {
         // 写入 mysql 数据
         writeMySQL(sqlContext, sparkContext);
 
+        // overwrite
+        overwriteMySQL(sqlContext, sparkContext);
+
         //停止SparkContext
         sparkContext.stop();
     }
+
+    private static void overwriteMySQL(SQLContext sqlContext, JavaSparkContext sparkContext) {
+        //jdbc.url=jdbc:mysql://localhost:3306/database
+        String url = "jdbc:mysql://10.0.0.37:3306/dslab";
+        //查找的表名
+        String table = "commodity";
+        //增加数据库的用户名(user)密码(password),指定test数据库的驱动(driver)
+        Properties connectionProperties = new Properties();
+        connectionProperties.put("user","root");
+        connectionProperties.put("password","123");
+        connectionProperties.put("driver","com.mysql.jdbc.Driver");
+
+        System.out.println("覆写dslab commodity 表内容");
+
+        String newComm = "1 A 66 USD 555";
+        System.out.println(newComm);
+        JavaRDD<String> itemData = sparkContext.parallelize(Arrays.asList(newComm));
+        JavaRDD<Row> itemRDD = itemData.map(new Function<String,Row>(){
+            public Row call(String line) throws Exception {
+                String[] splited = line.split(" ");
+                //return RowFactory.create(Integer.valueOf(splited[0]),splited[1],Integer.valueOf(splited[2]));
+                return RowFactory.create(
+                        Integer.valueOf(splited[0]),
+                        splited[1],
+                        Double.valueOf(splited[2]),
+                        splited[3],
+                        Integer.valueOf(splited[4])
+                );
+            }
+        });
+        List commStructFields = new ArrayList();
+        commStructFields.add(DataTypes.createStructField("id",DataTypes.IntegerType,true));
+        commStructFields.add(DataTypes.createStructField("name",DataTypes.StringType,true));
+        commStructFields.add(DataTypes.createStructField("price",DataTypes.DoubleType,true));
+        commStructFields.add(DataTypes.createStructField("currency",DataTypes.StringType,true));
+        commStructFields.add(DataTypes.createStructField("inventory",DataTypes.IntegerType,true));
+
+        StructType itemStruct = DataTypes.createStructType(commStructFields);
+        Dataset<Row> itemDF = sqlContext.createDataFrame(itemRDD, itemStruct);
+        itemDF.write().mode("overwrite").jdbc(mysqlUrl,commTable,mysqlProp);
+    }
+
     private static void readMySQL(SQLContext sqlContext){
         //jdbc.url=jdbc:mysql://localhost:3306/database
         String url = "jdbc:mysql://10.0.0.37:3306/dslab";
