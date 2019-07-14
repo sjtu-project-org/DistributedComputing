@@ -1,9 +1,15 @@
 # Lab5 Distributed Transaction Settlement System Report
 
 ## System environment
-1. Host: 4 virtual servers(centos7) with 4 VCPUs and 8GB RAM is set up
-   ![Figure 1](https://raw.githubusercontent.com/zztttt/DistributedComputing/master/report/image-20190713144347113.png)
-2. Http request sender: （Windows 的系统配置数据 #TODO ）
+1.  Host: 4 virtual servers(centos7) with 4 VCPUs and 8GB RAM is set up
+    ![Figure 1](https://raw.githubusercontent.com/zztttt/DistributedComputing/master/report/image-20190713144347113.png)
+2.  server IP
+    | server | IP |
+    | ------ | ------ |
+    | server-1 | 10.0.0.52 |
+    | server-2 | 10.0.0.34 |
+    | server-3 | 10.0.0.101 |
+    | server-4 | 10.0.0.37 |
 
 ## Install and configuration process
 1. openstack instance配置与SSH免密登陆：  
@@ -448,146 +454,236 @@
     }
     ```
 4. 汇率每隔一段时间随机变化
-``` JAVA
-public class mySimple {
+    ``` JAVA
+    public class mySimple {
 
-    private static ZooKeeper authZK = null;
-    private static final String intraHost = "10.0.0.52:2181";
+        private static ZooKeeper authZK = null;
+        private static final String intraHost = "10.0.0.52:2181";
 
-    private static Double d = 2.0;
-    private static final Double[] currencyBase = new Double[]{2.0, 12.0, 0.15, 9.0};
-    private static String[] currencyType = new String[]{"RMB", "USD", "JPY", "EUR"};
-    private static final int[] currencyLow = new int[]{140, 840, 10, 630};
-    private static final int[] currencyHigh = new int[]{260, 1560, 20, 1170};
+        private static Double d = 2.0;
+        private static final Double[] currencyBase = new Double[]{2.0, 12.0, 0.15, 9.0};
+        private static String[] currencyType = new String[]{"RMB", "USD", "JPY", "EUR"};
+        private static final int[] currencyLow = new int[]{140, 840, 10, 630};
+        private static final int[] currencyHigh = new int[]{260, 1560, 20, 1170};
 
-    public static void main(String[] args) throws KeeperException, InterruptedException,Exception {
-        System.out.println("in main");
+        public static void main(String[] args) throws KeeperException, InterruptedException,Exception {
+            System.out.println("in main");
 
-        final CountDownLatch latch = new CountDownLatch(1);
-        authZK = new ZooKeeper(intraHost, 50000, new Watcher() {
-            @Override
-            public void process(WatchedEvent watchedEvent) {
-                System.out.println("ZK connected");
-                try {
-                    for (int i=0; i<4; i++) {
-                        //authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                        //如果根节点不存在，则创建该货币节点
-                        Stat stat = authZK.exists("/Currency/"+currencyType[i], false);
-                        if (stat == null) {
-                            authZK.create("/Currency/"+currencyType[i], double2Bytes(currencyBase[i]), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                        }
-                        final int index = i;
-                        final long interval = 15000;
-                        new Thread(() -> {
-                            try {
-                                while (true) {
-                                    int low = currencyLow[index];
-                                    int high = currencyHigh[index];
-                                    Random rand = new Random();
-                                    double newValue = (rand.nextInt(high-low+1)+low) / 100.0;
-                                    authZK.setData("/Currency/"+currencyType[index], double2Bytes(newValue), -1);
-                                    byte[] data = authZK.getData("/Currency/"+currencyType[index], false, null);
-                                    System.out.println("Currency type: "+ currencyType[index]+" currency value: "+bytes2Double(data));
-                                    Thread.sleep(interval);
-                                }
-
-                            } catch (Exception e) {
-
+            final CountDownLatch latch = new CountDownLatch(1);
+            authZK = new ZooKeeper(intraHost, 50000, new Watcher() {
+                @Override
+                public void process(WatchedEvent watchedEvent) {
+                    System.out.println("ZK connected");
+                    try {
+                        for (int i=0; i<4; i++) {
+                            //authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                            //如果根节点不存在，则创建该货币节点
+                            Stat stat = authZK.exists("/Currency/"+currencyType[i], false);
+                            if (stat == null) {
+                                authZK.create("/Currency/"+currencyType[i], double2Bytes(currencyBase[i]), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
                             }
-                        }).start();
+                            final int index = i;
+                            final long interval = 15000;
+                            new Thread(() -> {
+                                try {
+                                    while (true) {
+                                        int low = currencyLow[index];
+                                        int high = currencyHigh[index];
+                                        Random rand = new Random();
+                                        double newValue = (rand.nextInt(high-low+1)+low) / 100.0;
+                                        authZK.setData("/Currency/"+currencyType[index], double2Bytes(newValue), -1);
+                                        byte[] data = authZK.getData("/Currency/"+currencyType[index], false, null);
+                                        System.out.println("Currency type: "+ currencyType[index]+" currency value: "+bytes2Double(data));
+                                        Thread.sleep(interval);
+                                    }
+
+                                } catch (Exception e) {
+
+                                }
+                            }).start();
+                        }
                     }
+                }
+            });
+            latch.await();
+
+        }
+    ```
+5. 分布式锁实现
+    ``` JAVA
+    public class FairLock {
+
+        //ZooKeeper配置信息
+        private ZooKeeper zkClient;
+        private static final String interHost = "10.0.0.52:2181";
+
+        // all lock is child of /Locks;
+        private String LOCK_ROOT_PATH = "/FairLocks";
+
+        private static final String LOCK_NODE_NAME = "Lock_";
+        private String lockPath;
+
+        // 监控lockPath的前一个节点的watcher
+        private Watcher watcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                System.out.println(event.getPath() + " 前锁释放");
+                synchronized (this) {
+                    notifyAll();
+                }
+
+            }
+        };
+
+        public FairLock(String LockWhat) throws IOException, InterruptedException, KeeperException{
+            this.LOCK_ROOT_PATH = this.LOCK_ROOT_PATH + "/" + LockWhat;
+
+            // ZKClient 连接初始化
+        }
+
+        //获取锁的原语实现.
+        public  void acquireLock() throws InterruptedException, KeeperException {
+            //创建锁节点
+            createLock();
+            //尝试获取锁
+            attemptLock();
+        }
+
+        private void createLock() throws KeeperException, InterruptedException {
+            // 创建EPHEMERAL_SEQUENTIAL类型节点
+            String lockPath = zkClient.create(LOCK_ROOT_PATH + "/" + LOCK_NODE_NAME,
+                    Thread.currentThread().getName().getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                    CreateMode.EPHEMERAL_SEQUENTIAL);
+            System.out.println(Thread.currentThread().getName() + " 锁创建: " + lockPath);
+            this.lockPath=lockPath;
+        }
+
+        private void attemptLock() throws KeeperException, InterruptedException {
+            // 获取Lock所有子节点，按照节点序号排序
+            List<String> lockPaths = null;
+            lockPaths = zkClient.getChildren(LOCK_ROOT_PATH, false);
+            Collections.sort(lockPaths);
+            int index = lockPaths.indexOf(lockPath.substring(LOCK_ROOT_PATH.length() + 1)); //TODO: need this.?
+
+            // 如果lockPath是序号最小的节点，则获取锁
+            if (index == 0) {
+                System.out.println(Thread.currentThread().getName() + " 锁获得, lockPath: " + lockPath);
+                return ;
+            } else {
+                // lockPath不是序号最小的节点，监控前一个节点
+                String preLockPath = lockPaths.get(index - 1);
+                Stat stat = zkClient.exists(LOCK_ROOT_PATH + "/" + preLockPath, watcher);
+                // 假如前一个节点不存在了，比如说执行完毕，或者执行节点掉线，重新获取锁
+                if (stat == null) {
+                    attemptLock();
+                } else { // 阻塞当前进程，直到preLockPath释放锁，被watcher观察到，notifyAll后，重新acquireLock
+                    System.out.println(" 等待前锁释放，prelocakPath："+preLockPath);
+                    synchronized (watcher) {
+                        watcher.wait();
+                    }
+                    attemptLock();
+                }
+            }
+        }
+
+        //释放锁的原语实现
+        public void releaseLock() 
+    }
+    ```
+6. 发送获取订单完成情况
+    ``` JAVA
+    @Override
+    public void handle(HttpExchange arg0) throws IOException
+    {
+        System.out.println("accept an query result from internet.....");
+
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(arg0.getRequestBody()));
+
+        String orderId = bufferedReader.readLine();
+
+        String sql = "select * from result where id = " + orderId;
+        System.out.println("sql:" + sql);
+        JSONObject json = new JSONObject();
+
+        try {
+            Class.forName(name);
+        }catch(ClassNotFoundException e){
+            System.out.println("class not found");
+            e.printStackTrace();
+        }
+        try{
+            conn = DriverManager.getConnection(url,user,password);//获取连接
+            pst = conn.prepareStatement(sql);//准备执行语句
+            //start
+            ret = pst.executeQuery();
+            System.out.println("finish query");
+            while (ret.next()) {
+                System.out.println("loop");
+                String id = ret.getString(1);
+                String user_id = ret.getString(2);
+                String initiator = ret.getString(3);
+                String success = ret.getString(4);
+                Double paid = ret.getDouble(5);
+                json.put("order_id", id);
+                json.put("user_id", user_id);
+                json.put("initiator", initiator);
+                json.put("success", success);
+                json.put("paid", paid);
+
+                System.out.println("response:" + json.toJSONString());
+            }
+            ret.close();
+            conn.close();
+            pst.close();
+
+        }catch (SQLException e){
+            System.out.println("connect mysql failed");
+            e.printStackTrace();
+        }
+        //获得查询结果
+        String resp = json.toJSONString();
+        arg0.sendResponseHeaders(200, resp.getBytes().length);
+        OutputStream out = arg0.getResponseBody();
+        out.write(resp.getBytes());
+        out.flush();
+        arg0.close();
+    }
+    ```
+7.  获取某货币总交易额的请求
+    ```JAVA
+    @Override
+    public void handle(HttpExchange arg0) throws IOException
+    {
+        System.out.println("accept an query result from internet.....");
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(arg0.getRequestBody()));
+        String msg = bufferedReader.readLine();
+
+        JSONObject json = new JSONObject();
+
+        zkClient = new ZooKeeper(interHost, 10000, new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                if(event.getState()== Event.KeeperState.Disconnected){
+                    System.out.println("HTTP Receiver lost ZK connection");
                 }
             }
         });
-        latch.await();
-
-    }
-```
-5. 分布式锁实现
-``` JAVA
-public class FairLock {
-
-    //ZooKeeper配置信息
-    private ZooKeeper zkClient;
-    private static final String interHost = "10.0.0.52:2181";
-
-    // all lock is child of /Locks;
-    private String LOCK_ROOT_PATH = "/FairLocks";
-
-    private static final String LOCK_NODE_NAME = "Lock_";
-    private String lockPath;
-
-    // 监控lockPath的前一个节点的watcher
-    private Watcher watcher = new Watcher() {
-        @Override
-        public void process(WatchedEvent event) {
-            System.out.println(event.getPath() + " 前锁释放");
-            synchronized (this) {
-                notifyAll();
-            }
-
+        Double d = -1.1;
+        try {
+            d = getTotalAmount(msg);
+        }catch(InterruptedException | KeeperException e){
+            System.out.println("getTotal error");
+            e.printStackTrace();
         }
-    };
 
-    public FairLock(String LockWhat) throws IOException, InterruptedException, KeeperException{
-        this.LOCK_ROOT_PATH = this.LOCK_ROOT_PATH + "/" + LockWhat;
-
-        // ZKClient 连接初始化
+        String resp = String.valueOf(d);
+        arg0.sendResponseHeaders(200, resp.getBytes().length);
+        OutputStream out = arg0.getResponseBody();
+        out.write(resp.getBytes());
+        out.flush();
+        arg0.close();
     }
-
-    //获取锁的原语实现.
-    public  void acquireLock() throws InterruptedException, KeeperException {
-        //创建锁节点
-        createLock();
-        //尝试获取锁
-        attemptLock();
-    }
-
-    private void createLock() throws KeeperException, InterruptedException {
-        // 创建EPHEMERAL_SEQUENTIAL类型节点
-        String lockPath = zkClient.create(LOCK_ROOT_PATH + "/" + LOCK_NODE_NAME,
-                Thread.currentThread().getName().getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                CreateMode.EPHEMERAL_SEQUENTIAL);
-        System.out.println(Thread.currentThread().getName() + " 锁创建: " + lockPath);
-        this.lockPath=lockPath;
-    }
-
-    private void attemptLock() throws KeeperException, InterruptedException {
-        // 获取Lock所有子节点，按照节点序号排序
-        List<String> lockPaths = null;
-        lockPaths = zkClient.getChildren(LOCK_ROOT_PATH, false);
-        Collections.sort(lockPaths);
-        int index = lockPaths.indexOf(lockPath.substring(LOCK_ROOT_PATH.length() + 1)); //TODO: need this.?
-
-        // 如果lockPath是序号最小的节点，则获取锁
-        if (index == 0) {
-            System.out.println(Thread.currentThread().getName() + " 锁获得, lockPath: " + lockPath);
-            return ;
-        } else {
-            // lockPath不是序号最小的节点，监控前一个节点
-            String preLockPath = lockPaths.get(index - 1);
-            Stat stat = zkClient.exists(LOCK_ROOT_PATH + "/" + preLockPath, watcher);
-            // 假如前一个节点不存在了，比如说执行完毕，或者执行节点掉线，重新获取锁
-            if (stat == null) {
-                attemptLock();
-            } else { // 阻塞当前进程，直到preLockPath释放锁，被watcher观察到，notifyAll后，重新acquireLock
-                System.out.println(" 等待前锁释放，prelocakPath："+preLockPath);
-                synchronized (watcher) {
-                    watcher.wait();
-                }
-                attemptLock();
-            }
-        }
-    }
-
-    //释放锁的原语实现
-    public void releaseLock() 
-}
-```
-6. 发送获取订单完成情况与获取某货币总交易额的请求
-``` JAVA
-
-```
+    ```
 
 ##  Process Show
 0.  启动 Zookeerpr、Kafka、Spark、Mysql 服务
