@@ -48,7 +48,7 @@ public class SparkMysql {
         //SparkJdbc读取Postgresql的products表内容
         System.out.println("读取dslab数据库中的commodity表内容");
         // 读取表中所有数据
-        Dataset<Row> jdbcDF = sqlContext.read().jdbc(url,table,connectionProperties).select("*");
+        Dataset<Row> jdbcDF = sqlContext.read().jdbc(url,table,connectionProperties).select("*").where("id = '1'");
         //显示数据
         jdbcDF.show();
     }

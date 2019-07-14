@@ -14,7 +14,7 @@ public class FairLock {
     private static final String interHost = "10.0.0.52:2181";
 
     // all lock is child of /Locks;
-    private static String LOCK_ROOT_PATH = "/FairLocks";
+    private String LOCK_ROOT_PATH = "/FairLocks";
 
     private static final String LOCK_NODE_NAME = "Lock_";
     private String lockPath;
@@ -31,7 +31,7 @@ public class FairLock {
         }
     };
 
-    public FairLock(String LockWhat) throws IOException {
+    public FairLock(String LockWhat) throws IOException, InterruptedException, KeeperException{
         this.LOCK_ROOT_PATH = this.LOCK_ROOT_PATH + "/" + LockWhat;
 
         zkClient= new ZooKeeper(interHost, 10000, new Watcher() {
@@ -43,6 +43,12 @@ public class FairLock {
                 }
             }
         });
+
+        //如果根节点不存在，则创建根节点
+        Stat stat = zkClient.exists(this.LOCK_ROOT_PATH, false);
+        if (stat == null) {
+            zkClient.create(this.LOCK_ROOT_PATH, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        }
     }
 
     //获取锁的原语实现.
