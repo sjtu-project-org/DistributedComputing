@@ -23,7 +23,6 @@ import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.util.URIUtil;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.httpclient.HttpException;
 
 public class HttpSenderUtil {
 
@@ -128,7 +127,7 @@ public class HttpSenderUtil {
     private static String url = "http://202.120.40.8:30361";
 
     public static void main(String[] strs){
-        String filename = "C:\\Users\\loluz\\Desktop\\DS\\lab5\\src\\main\\java\\order.json";
+        String filename = "E:\\junior big\\分布式系统\\lab_DistributedTransactionSettlementSystem\\order.json";
         String contents = "";
         try {
             contents = new String(Files.readAllBytes(new File(filename).toPath()));
@@ -140,7 +139,7 @@ public class HttpSenderUtil {
         List<Order> orderList = JSONArray.parseArray(contents.toString(),Order.class);
         for (Order od : orderList) {
             String msg = JSON.toJSONString(od);
-            String param = "msg="+msg;
+            String param = msg;
             String res = HttpSenderUtil.sendPost(url, param);
             System.out.println(res);
             //System.out.println(od.items);

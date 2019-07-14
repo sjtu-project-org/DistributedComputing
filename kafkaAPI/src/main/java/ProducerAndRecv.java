@@ -10,12 +10,19 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import com.sun.net.httpserver.HttpHandler;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
 
 public class ProducerAndRecv implements HttpHandler{
     private Properties properties;
     Producer<String, String> producer = null;
 
     private static final String topic = "test1";
+
+    private static ZooKeeper zkClient;
+    private static String ORDER_PATH = "/OrderIDs/Order";
 
     @Override
     public void handle(HttpExchange arg0) throws IOException
@@ -25,18 +32,35 @@ public class ProducerAndRecv implements HttpHandler{
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(arg0.getRequestBody()));
 
         String msg = bufferedReader.readLine();
-        SendMsg(msg);
+        System.out.println(msg);
 
-        String resp = "your request message i get it!";
+        /* TODO: add a order id generator */
+        String orderPath = null;
+        try {
+            orderPath = zkClient.create(ORDER_PATH,
+                    Thread.currentThread().getName().getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                    CreateMode.EPHEMERAL_SEQUENTIAL);
+            System.out.println(orderPath);
+
+        } catch (KeeperException | InterruptedException e) {
+            System.out.println("HTTP handler orderID wrong");
+        }
+
+        String orderId = orderPath.substring(ORDER_PATH.length());
+
+        String Msg2Kafka = String.format("{order_id:%s,order:%s}", orderId, msg);
+        SendMsg2Kafka(Msg2Kafka);
+
+        String resp = "your request message already received," + "orderID : "+ orderId;
         arg0.sendResponseHeaders(200, resp.getBytes().length);
         OutputStream out = arg0.getResponseBody();
         out.write(resp.getBytes());
-
         out.flush();
+
         arg0.close();
     }
 
-    ProducerAndRecv(){
+    public ProducerAndRecv(ZooKeeper zk){
         Properties prop = new Properties();
         prop.put("bootstrap.servers", "10.0.0.52:9092, 10.0.0.34:9092, 10.0.0.101:9092");
         prop.put("acks", "all");
@@ -48,9 +72,10 @@ public class ProducerAndRecv implements HttpHandler{
         prop.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
         this.properties = prop;
+        this.zkClient = zk;
     }
 
-    public void SendMsg(String msg){
+    public void SendMsg2Kafka(String msg){
         //create a new producer
         producer = new KafkaProducer<String, String>(this.properties);
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, msg);
@@ -60,7 +85,7 @@ public class ProducerAndRecv implements HttpHandler{
     }
 
     public static void main(String args[]){
-        ProducerAndRecv prodRecv = new ProducerAndRecv();
+        //ProducerAndRecv prodRecv = new ProducerAndRecv();
         /*for(int i = 0; i < 5; ++i){
             String s = "message:" + String.valueOf(i);
             prodRecv.SendMsg(s);

@@ -50,16 +50,14 @@ public class mySimple {
     }
 
     public static void testCreateNode() throws KeeperException, InterruptedException{
-        for (int i = 0; i< 4; i++) {
-            String newNodeString = authZK.create("/Currency/RMB", double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            byte[] data = authZK.getData("/RMB", false, null);
-            System.out.println(bytes2Double(data));
-        }
+        String newNodeString = authZK.create("/Currency/RMB", double2Bytes(d), Ids.OPEN_ACL_UNSAFE,CreateMode.EPHEMERAL);
+        byte[] data = authZK.getData("/Currency/RMB", false, null);
+        System.out.println(bytes2Double(data));
     }
 
     public static void setNodeData() throws KeeperException, InterruptedException{
-        authZK.setData("/RMB", double2Bytes(2.5), -1);
-        byte[] data = authZK.getData("/RMB", false, null);
+        authZK.setData("/Currency/RMB", double2Bytes(2.5), -1);
+        byte[] data = authZK.getData("/Currency/RMB", false, null);
         System.out.println(bytes2Double(data));
     }
 
