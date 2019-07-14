@@ -28,6 +28,7 @@ public class mySimple {
     private static final String path = "/service";
 
     private static Double d = 2.0;
+    private static final Double[] currencyBase = new Double[]{2.0, 12.0, 0.15, 9.0};
     private static String[] currencyType = new String[]{"RMB", "USD", "JPY", "EUR"};
     private static final int[] currencyLow = new int[]{140, 840, 10, 630};
     private static final int[] currencyHigh = new int[]{260, 1560, 20, 1170};
@@ -73,7 +74,12 @@ public class mySimple {
                 System.out.println("ZK connected");
                 try {
                     for (int i=0; i<4; i++) {
-                        authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        //authZK.create("/Currency/"+currencyType[i], double2Bytes(d), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        //如果根节点不存在，则创建该货币节点
+                        Stat stat = authZK.exists("/Currency/"+currencyType[i], false);
+                        if (stat == null) {
+                            authZK.create("/Currency/"+currencyType[i], double2Bytes(currencyBase[i]), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        }
                         final int index = i;
                         final long interval = 15000;
                         new Thread(() -> {
@@ -104,7 +110,7 @@ public class mySimple {
                     e1.printStackTrace();
                 }
                 System.out.println("finish");
-                latch.countDown();
+                //latch.countDown();
             }
         });
         latch.await();
