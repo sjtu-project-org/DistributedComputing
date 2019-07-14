@@ -43,7 +43,8 @@ public class JavaDirectDemo {
                         ConsumerStrategies.<String, String>Subscribe(topics, kafkaParams)
                 );
 
-
+        
+/*
         // Get the lines, split them into words, count the words and print
         JavaDStream<String> lines = stream.map(ConsumerRecord::value);
         JavaDStream<String> words = lines.flatMap(x -> Arrays.asList(SPACE.split(x)).iterator());
@@ -54,7 +55,7 @@ public class JavaDirectDemo {
             System.out.println("hhhhhh");
             System.out.println("rdd: " + rdd.toString());
     });
-
+*/
         System.out.println("fuck kafka");
 
         //stream.print();
