@@ -43,6 +43,48 @@
     ```
     tar -xvf zookeeper-3.4.14.tar.gz
     ```
+    修改zookeeper.properties
+    ```
+    dataDir=/home/centos/kafka/zookeeper
+    tickTime=2000
+    initLimit=5
+    syncLimit=2
+    server.1=10.0.0.52:2888:3888
+    server.2=10.0.0.34:2888:3888
+    server.3=10.0.0.101:2888:3888
+    ```
+    通过startZKCluster.sh启动zookeeper
+    ```
+    #! /bin/sh
+    echo "start zookeeper ....."
+    /home/centos/zookeeper-3.4.14/bin/zkServer.sh start
+    for i in 2 3
+    do
+    ssh server-$i "/home/centos/zookeeper-3.4.14/bin/zkServer.sh start"
+    done
+
+    sleep 3s
+
+    echo server-1
+    /home/centos/zookeeper-3.4.14/bin/zkServer.sh status
+    for i in 2 3
+    do
+    echo server-$i
+    ssh server-$i "/home/centos/zookeeper-3.4.14/bin/zkServer.sh status"
+    done
+    echo "zookeeper start ok"
+    ```
+    通过stopZKCluster.sh关闭zookeeper
+    ```
+    #! /bin/sh
+    echo "stop zookeeper ..."
+    /home/centos/zookeeper-3.4.14/bin/zkServer.sh stop
+    for i in 2 3
+    do
+    ssh server-$i "/home/centos/zookeeper-3.4.14/bin/zkServer.sh stop"
+    done
+    echo "zookeeper stoped"
+    ```
 5.  部署Kafka  
     对每个服务器从官网下载压缩包：**kafka_2.11-2.3.0.tgz**
     ```
@@ -433,7 +475,11 @@
             sparkContext.awaitTermination();
         }
     }
+
+    ...
+    TODO
     ```
+
 ##  the problems you encountered
 1.  服务器ping不同域名，但是能ping通具体IP，且在服务器之间能自由ping通  
     怀疑是DNS出现问题，但是修改了不同的DNS服务器后依然没有解决，后来发现是安全组的问题，新增了一些方法得以解决
