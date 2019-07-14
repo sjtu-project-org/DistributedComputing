@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>testZK</groupId>
-    <artifactId>myDemo</artifactId>
+    <artifactId>ExchangeRate</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
@@ -39,7 +39,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>myLockDemo</mainClass>
+                            <mainClass>mySimple</mainClass>
                         </manifest>
                     </archive>
                     <!--不追加jar-with-dependencies -->

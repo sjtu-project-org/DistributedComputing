@@ -215,14 +215,16 @@ public class JavaDirectDemo {
 
         // 计算 paid 并构造数据写入MySQL
         Double paid = 0.0;
+        String successFlag = "false";
         if (stockEnough) {
             paid = 55.0;
+            successFlag = "true";
         }
         String result = String.format("%s %s %s %s %s",
                 o.getOrder_id(),
                 o.getOrder().getUserId(),
                 o.getOrder().getInitiator(),
-                "false",
+                successFlag,
                 String.valueOf(paid));
         JavaRDD<String> resultData = sparkContextForSQL.parallelize(Arrays.asList(result));
         JavaRDD<Row> resultRDD = resultData.map(new Function<String,Row>(){

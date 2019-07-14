@@ -104,7 +104,7 @@ public class mySimple {
                     e1.printStackTrace();
                 }
                 System.out.println("finish");
-                latch.countDown();
+                //latch.countDown();
             }
         });
         latch.await();
