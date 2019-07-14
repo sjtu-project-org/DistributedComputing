@@ -612,7 +612,7 @@ java -jar ExchangeRate-1.0-SNAPSHOT.jar
 ![商品库存减少](report/dbcomm.png)
 
 6. 使用其他 HTTP 可以请求查询某订单完成情况及总交易额
-
+![其他请求](report/requestTotal.png)
 ##  the problems you encountered
 1.  服务器ping不同域名，但是能ping通具体IP，且在服务器之间能自由ping通  
     怀疑是DNS出现问题，但是修改了不同的DNS服务器后依然没有解决，后来发现是安全组的问题，新增了一些方法得以解决
