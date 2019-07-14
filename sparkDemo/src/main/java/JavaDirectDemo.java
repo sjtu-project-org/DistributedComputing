@@ -1,6 +1,8 @@
 import java.util.*;
 import java.util.regex.Pattern;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.spark.SparkConf;
 import org.apache.spark.TaskContext;
 import org.apache.spark.api.java.*;
@@ -13,11 +15,15 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import scala.Tuple2;
 
+import javax.print.DocFlavor;
+
 public class JavaDirectDemo {
 
     private static final Pattern SPACE = Pattern.compile(" ");
 
     private static final String topic = "test1";
+
+    
 
     public static void main(String[] args) throws Exception{
 
@@ -43,18 +49,57 @@ public class JavaDirectDemo {
                         ConsumerStrategies.<String, String>Subscribe(topics, kafkaParams)
                 );
 
-        
+        System.out.println("fuck kafka");
+
+        JavaDStream<OrderWithID> orderDStream = stream.map(
+          new Function<ConsumerRecord<String, String>, OrderWithID>() {
+              @Override
+              public OrderWithID call(ConsumerRecord<String, String> cr) throws Exception {
+                  System.out.println(cr.key());
+                  System.out.println(cr.value());
+                  return JSONObject.parseObject(cr.value(), OrderWithID.class);
+              }
+          }
+        ).cache();
+        orderDStream.print();
+
+        System.out.println("stream map ok");
+        orderDStream.foreachRDD(
+                new VoidFunction<JavaRDD<OrderWithID>> () {
+                    @Override
+                    public void call(JavaRDD<OrderWithID> rdd) throws Exception {
+                        List<OrderWithID> orders = rdd.collect();
+                        for (OrderWithID o : orders) {
+                            System.out.println("in List");
+                            System.out.println(o.getOrder_id());
+                            System.out.println(o.getOrder().getInitiator());
+                        }
+                        /*
+                        rdd.foreach(
+                                new VoidFunction<OrderWithID>() {
+                                    @Override
+                                    public void call(OrderWithID orderWithID) throws Exception {
+                                        System.out.println("order with ID:");
+                                        System.out.println(JSON.toJSONString(orderWithID));
+                                    }
+                                }
+                        );
+                        */
+                    }
+                }
+        );
+
 /*
         // Get the lines, split them into words, count the words and print
         JavaDStream<String> lines = stream.map(ConsumerRecord::value);
         JavaDStream<String> words = lines.flatMap(x -> Arrays.asList(SPACE.split(x)).iterator());
         JavaPairDStream<String, Integer> wordCounts = words.mapToPair(s -> new Tuple2<>(s, 1))
                 .reduceByKey((i1, i2) -> i1 + i2);
-        //wordCounts.print();
+        wordCounts.print();
         wordCounts.toJavaDStream().foreachRDD(rdd -> {
             System.out.println("hhhhhh");
             System.out.println("rdd: " + rdd.toString());
-    });
+        });
 */
         System.out.println("fuck kafka");
 
@@ -64,4 +109,10 @@ public class JavaDirectDemo {
         sparkContext.awaitTermination();
 
     }
+
+    private void handleOrder(OrderWithID o) {
+
+    }
+
+
 }

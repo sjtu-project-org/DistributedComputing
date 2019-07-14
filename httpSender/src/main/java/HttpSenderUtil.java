@@ -139,7 +139,7 @@ public class HttpSenderUtil {
         List<Order> orderList = JSONArray.parseArray(contents.toString(),Order.class);
         for (Order od : orderList) {
             String msg = JSON.toJSONString(od);
-            String param = "msg="+msg;
+            String param = msg;
             String res = HttpSenderUtil.sendPost(url, param);
             System.out.println(res);
             //System.out.println(od.items);
