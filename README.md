@@ -153,10 +153,6 @@
     done
     echo "test done"
     ```
-    当出现以下输出时，集群启动成功
-    ```
-    TODO
-    ```
     通过stop.sh脚本,销毁kafka集群
     ``` bash
     #! /bin/bash
@@ -212,7 +208,8 @@
 
 
 ## Program design
-0.  系统运行流程为：从 Windows 主机使用 HttpSender 向 Cloud Server 映射到外网的端口 30361 发送订单信息。在 server 中存在一个 Http Recevier 监听该端口，获取到 Order 信息并使用 Kafka Producer 向 Kafka 相应 topic 生产消息。Spark 中运行的 Spark Streaming 任务使用 Kafka API 使用 Direct 方式消费消息，完成订单的处理逻辑并持久化到数据库，同时处理 Zookeeper 管理的总交易额数据。
+0.  系统运行流程为：从 Windows 主机使用 HttpSender 向 Cloud Server 映射到外网的端口 30361 发送订单信息。在 server 中存在一个 Http Recevier 监听该端口，获取到 Order 信息并使用 Kafka Producer 向 Kafka 相应 topic 生产消息。Spark 中运行的 Spark Streaming 任务使用 Kafka API 使用 Direct 方式消费消息，完成订单的处理逻辑并持久化到数据库，同时处理 Zookeeper 管理的总交易额数据。  
+    ![figure2](./pic.png)
 
     另外，在 Recevier 接受到消息时利用 Zookeeper 生成一个唯一的 orderID 作为返回值响应请求，用户后续可以使用该 orderID 查询订单完成情况。同时还有四个线程每隔一定时间修改 Zookeeper 管理的汇率数据。
 
@@ -694,18 +691,18 @@
 0.  启动 Zookeerpr、Kafka、Spark、Mysql 服务
 
 1.  在多服务器启动 HTTP Receiver 监听
-``` bash
-java -jar HttpRecv-1.0-SNAPSHOT.jar
-```
+    ``` bash
+    java -jar HttpRecv-1.0-SNAPSHOT.jar
+    ```
 2. 向 Spark 集群提交任务
-``` bash
-./bin/spark-submit --master spark://server-1:7077 --class JavaDirectDemo /home/centos/integration/sparkConsumer-1.0-SNAPSHOT.jar
-```
+    ``` bash
+    ./bin/spark-submit --master spark://server-1:7077 --class JavaDirectDemo /home/centos/integration/sparkConsumer-1.0-SNAPSHOT.jar
+    ```
 3. 启动 汇率变化查询
-``` bash
-java -jar ExchangeRate-1.0-SNAPSHOT.jar
-```
-4. 启动 Windows HTTP Sender 得到订单 ID 返回
+    ``` bash
+    java -jar ExchangeRate-1.0-SNAPSHOT.jar
+    ```
+4. 启动 Windows HTTP Sender 得到订单 ID 返回  
 ![返回订单ID](report/orderResp.png)
 
 5. 查看 Mysql 发现结果集增加，商品库存减少
@@ -748,5 +745,22 @@ java -jar ExchangeRate-1.0-SNAPSHOT.jar
 | 刘泽宇 | 516030910108 | HTTP传输order、数据库创建、JSON模块实现、Zookeeper汇率变化实现|
 | 李翌珺 | 516030910395 | cloud环境搭建，spark部署、文档编写 |
 
+## References
 
+<https://spark.apache.org/docs/1.4.0/streaming-kafka-integration.html>
 
+<https://www.cnblogs.com/xlturing/p/6246538.html#spark-streaming%E6%8E%A5%E6%94%B6kafka%E6%95%B0%E6%8D%AE>
+
+<https://blog.csdn.net/lyhkmm/article/details/88398102>
+
+<https://github.com/code4wt/distributed_lock>
+
+<https://stackoverflow.com/questions/7181534/http-post-using-json-in-java>
+
+<http://www.zhangrenhua.com/2016/08/02/hadoop-spark-streaming%E6%95%B0%E6%8D%AE%E6%97%A0%E4%B8%A2%E5%A4%B1%E8%AF%BB%E5%8F%96kafka%EF%BC%8C%E4%BB%A5%E5%8F%8A%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/?tdsourcetag=s_pctim_aiomsg>
+
+<https://www.cnblogs.com/qizhelongdeyang/p/7354183.html>
+
+<https://zhuanlan.zhihu.com/p/65223757?utm_source=qq&utm_medium=social&utm_oi=37779799015424>
+
+<https://blog.csdn.net/qq_36142114/article/details/88616713>
