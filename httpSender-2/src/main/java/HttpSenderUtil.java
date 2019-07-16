@@ -125,10 +125,10 @@ public class HttpSenderUtil {
     }
 
     private static String url = "http://202.120.40.8:";
-    private static String port = "30361";
+    private static String port = "30362";
 
     public static void main(String[] strs) throws InterruptedException{
-        String filename = "E:\\junior big\\gitRepo\\DistributedComputing\\order-testData\\order1.json";
+        String filename = "E:\\junior big\\gitRepo\\DistributedComputing\\order-testData\\order2.json";
         String contents = "";
         try {
             contents = new String(Files.readAllBytes(new File(filename).toPath()));

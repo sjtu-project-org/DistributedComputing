@@ -15,8 +15,14 @@ public class HttpReceiver
 
     public static void main(String[] args) throws Exception
     {
+        if (args.length != 1) {
+            System.out.println("usage: java -jar [package] <port>");
+            System.exit(-1);
+        }
+        Integer port = Integer.valueOf(args[0]);
+
         HttpServerProvider provider = HttpServerProvider.provider();
-        HttpServer server = provider.createHttpServer(new InetSocketAddress(30361), 10);
+        HttpServer server = provider.createHttpServer(new InetSocketAddress(port), 10);
 
         zkClient= new ZooKeeper(interHost, 10000, new Watcher() {
             @Override
